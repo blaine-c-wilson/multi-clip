@@ -1,0 +1,10 @@
+# Keep the build context small and free of secrets and machine-specific files.
+.git
+.github
+.venv
+.env
+**/__pycache__
+**/.DS_Store
+.pytest_cache
+tests
+scripts
