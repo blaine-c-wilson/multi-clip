@@ -49,8 +49,15 @@ pip-audit --strict --disable-pip -r requirements-dev.txt
 
 ## Deployment
 
-Every merge to `main` runs CI, and once all checks pass, the `publish` job pushes the tested
-image to Amazon ECR (`us-east-2`), tagged with the commit SHA.
+The app runs on AWS Lambda (`us-east-2`) at
+https://st5ymlzzn3ahurkxqqepfuv5pm0blzqs.lambda-url.us-east-2.on.aws/
+
+Every merge to `main` runs CI. Once all checks pass, the `deploy` job pushes the tested image
+to Amazon ECR, tagged with the commit SHA, updates the `multi-clip` Lambda function to that
+image, and checks that `/health` answers on the live site.
+
+To roll back, choose **Deploy new image** on the function's page in the Lambda console and
+pick the previous image tag, or revert the commit on `main` so the pipeline redeploys it.
 
 - CI signs in to AWS as the IAM user `github-actions-multi-clip`. Its permissions are in
   `aws/github-deploy-policy.json`; keep that file in sync with the user's inline policy.

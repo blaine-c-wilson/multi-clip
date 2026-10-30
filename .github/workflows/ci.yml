@@ -96,14 +96,21 @@ jobs:
           path: image.tar.gz
           retention-days: 1
 
-  # Publishes the image to Amazon ECR. Runs only for pushes to main, after every
-  # check has passed. The AWS key lives in the "production" environment, which
-  # only main can use, so workflows on other branches can't read it.
-  publish:
+  # Publishes the image to Amazon ECR and deploys it to AWS Lambda. Runs only for
+  # pushes to main, after every check has passed. The AWS key lives in the
+  # "production" environment, which only main can use, so workflows on other
+  # branches can't read it.
+  deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test, audit, image]
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
+      url: ${{ steps.check.outputs.url }}
+    # One deploy at a time; a newer merge waits instead of racing the current one.
+    concurrency:
+      group: production
+      cancel-in-progress: false
     steps:
       - name: Download image
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -128,3 +135,23 @@ jobs:
           aws ecr get-login-password | docker login --username AWS --password-stdin "${REPOSITORY%%/*}"
           docker tag multi-clip:ci "$REPOSITORY:$GITHUB_SHA"
           docker push "$REPOSITORY:$GITHUB_SHA"
+
+      - name: Deploy to Lambda
+        env:
+          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+        run: |
+          aws lambda update-function-code --function-name multi-clip \
+            --image-uri "$REPOSITORY:$GITHUB_SHA" > /dev/null
+          aws lambda wait function-updated --function-name multi-clip
+
+      # Fails the deploy if the live site doesn't answer. The URL already ends in "/".
+      - name: Check the live site
+        id: check
+        run: |
+          URL=$(aws lambda get-function-url-config --function-name multi-clip --query FunctionUrl --output text)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          for i in $(seq 1 10); do
+            curl -fsS "${URL}health" && exit 0
+            sleep 3
+          done
+          exit 1
