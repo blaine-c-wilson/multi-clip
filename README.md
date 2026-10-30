@@ -39,8 +39,23 @@ pip install uv
 scripts/lock.sh 2026-10-16
 ```
 
+## Checking for vulnerabilities
+
 To check the locked packages for known vulnerabilities (CI also runs this):
 
 ```bash
 pip-audit --strict --disable-pip -r requirements-dev.txt
 ```
+
+## Deployment
+
+Every merge to `main` runs CI, and once all checks pass, the `publish` job pushes the tested
+image to Amazon ECR (`us-east-2`), tagged with the commit SHA.
+
+- CI signs in to AWS as the IAM user `github-actions-multi-clip`. Its permissions are in
+  `aws/github-deploy-policy.json`; keep that file in sync with the user's inline policy.
+- The user's access key is stored only as secrets in the GitHub environment `production`,
+  which only `main` can use.
+- **Rotate the key every few months:** create a new access key in IAM, update the
+  `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment secrets, then delete the old key.
+  If you suspect a leak, deactivate the key in IAM immediately.
