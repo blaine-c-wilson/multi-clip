@@ -1,0 +1,27 @@
+# Checks every 30 minutes that the live site answers. A failed run means the site
+# is down; GitHub emails a notification when a scheduled run fails.
+name: Uptime
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: # lets you run the check by hand from the Actions tab
+
+# This workflow only makes an HTTP request, so it needs no repository access.
+permissions: {}
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Tries three times, so a single slow cold start isn't reported as an outage.
+      - name: Check the live site
+        env:
+          URL: https://st5ymlzzn3ahurkxqqepfuv5pm0blzqs.lambda-url.us-east-2.on.aws/
+        run: |
+          for i in 1 2 3; do
+            curl -fsS --max-time 15 "${URL}health" && exit 0
+            sleep 10
+          done
+          exit 1
