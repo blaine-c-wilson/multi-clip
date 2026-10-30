@@ -61,8 +61,30 @@ jobs:
         with:
           persist-credentials: false
 
+      # public.ecr.aws sometimes rate-limits the Lambda adapter download (HTTP 429).
+      # Retry only that failure, waiting longer each time; any other build error
+      # fails straight away.
       - name: Build image
-        run: docker build -t multi-clip:ci .
+        run: |
+          set -o pipefail
+          log="$RUNNER_TEMP/build.log"
+          for attempt in 1 2 3; do
+            if docker build -t multi-clip:ci . 2>&1 | tee "$log"; then
+              echo "Build succeeded on attempt $attempt"
+              exit 0
+            fi
+            if ! grep -qE '429 Too Many Requests|toomanyrequests' "$log"; then
+              echo "::error::Build failed, and not because of a rate limit"
+              exit 1
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              wait=$((attempt * 30))
+              echo "::warning::Rate-limited on attempt $attempt; retrying in ${wait}s"
+              sleep "$wait"
+            fi
+          done
+          echo "::error::Still rate-limited after 3 attempts"
+          exit 1
 
       - name: Smoke test
         run: |
