@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>multi-clip</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    textarea { width: 100%; min-height: 5rem; box-sizing: border-box; font: inherit; }
+    button { font: inherit; cursor: pointer; }
+    ul { list-style: none; padding: 0; }
+    li { border: 1px solid #ccc; border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem; }
+    li pre { white-space: pre-wrap; margin: 0 0 0.5rem; font: inherit; }
+    .meta { color: #666; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <h1>multi-clip</h1>
+
+  <form id="new-clip">
+    <textarea id="text" placeholder="Paste or type a clip..." required></textarea>
+    <button type="submit">Save clip</button>
+  </form>
+
+  <ul id="clips"></ul>
+
+  <script>
+    const list = document.getElementById("clips");
+
+    // Fetch all clips from the API and redraw the list.
+    async function loadClips() {
+      const response = await fetch("/api/clips");
+      const clips = await response.json();
+      list.innerHTML = "";
+      for (const clip of clips) {
+        const item = document.createElement("li");
+
+        // textContent (not innerHTML) so clip text is never run as HTML.
+        const text = document.createElement("pre");
+        text.textContent = clip.text;
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = new Date(clip.created_at).toLocaleString() + " ";
+
+        const copy = document.createElement("button");
+        copy.textContent = "Copy";
+        copy.onclick = () => navigator.clipboard.writeText(clip.text);
+
+        const remove = document.createElement("button");
+        remove.textContent = "Delete";
+        remove.onclick = async () => {
+          await fetch(`/api/clips/${clip.id}`, { method: "DELETE" });
+          loadClips();
+        };
+
+        meta.append(copy, " ", remove);
+        item.append(text, meta);
+        list.append(item);
+      }
+    }
+
+    document.getElementById("new-clip").onsubmit = async (event) => {
+      event.preventDefault();
+      const textBox = document.getElementById("text");
+      await fetch("/api/clips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: textBox.value }),
+      });
+      textBox.value = "";
+      loadClips();
+    };
+
+    loadClips();
+  </script>
+</body>
+</html>
