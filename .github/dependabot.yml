@@ -11,6 +11,12 @@ updates:
     cooldown:
       default-days: 14
 
+  # Base image in the Dockerfile (updates the pinned digest)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
   # Actions used in .github/workflows (updates the pinned SHAs and version comments)
   - package-ecosystem: "github-actions"
     directory: "/"
