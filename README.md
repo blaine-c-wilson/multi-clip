@@ -31,11 +31,16 @@ The `.txt` files are generated lock files that pin every package, including indi
 Don't edit the `.txt` files by hand; edit the `.in` files and regenerate.
 
 Only releases at least 14 days old are locked (a "cooldown"), because malicious package
-releases are usually caught and pulled within days. Set `CUTOFF` to the date 14 days ago:
+releases are usually caught and pulled within days. The exception is a release that fixes a
+known vulnerability; those are listed in `scripts/lock.sh`. Pass the date 14 days ago:
 
 ```bash
 pip install uv
-CUTOFF=2026-10-16
-uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer $CUTOFF requirements.in -o requirements.txt
-uv pip compile --universal --python-version 3.12 --generate-hashes --exclude-newer $CUTOFF requirements.in requirements-dev.in -o requirements-dev.txt
+scripts/lock.sh 2026-10-16
+```
+
+To check the locked packages for known vulnerabilities (CI also runs this):
+
+```bash
+pip-audit --strict --disable-pip -r requirements-dev.txt
 ```
