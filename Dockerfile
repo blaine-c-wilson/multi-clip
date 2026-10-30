@@ -12,9 +12,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install dependencies before copying the code, so this slow layer is reused
-# from cache whenever only the code changes.
+# from cache whenever only the code changes. pip is then removed: it's only
+# needed at build time, and its bundled libraries add vulnerabilities.
 COPY requirements.txt .
-RUN pip install --require-hashes -r requirements.txt
+RUN pip install --require-hashes -r requirements.txt \
+ && pip uninstall --yes pip
 
 COPY app ./app
 

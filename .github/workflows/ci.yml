@@ -52,3 +52,33 @@ jobs:
 
       - name: Audit dependencies
         run: pip-audit --strict --disable-pip -r requirements-dev.txt
+
+  # Builds the container image, checks that it starts, and scans it.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        run: docker build -t multi-clip:ci .
+
+      - name: Smoke test
+        run: |
+          docker run -d --name app -p 8000:8000 multi-clip:ci
+          for i in $(seq 1 20); do
+            curl -fsS http://127.0.0.1:8000/health && exit 0
+            sleep 1
+          done
+          docker logs app
+          exit 1
+
+      # Fails on HIGH or CRITICAL vulnerabilities that have a fix available.
+      # Trivy runs from its official image, pinned to a digest (update by hand;
+      # Dependabot doesn't see images referenced in run steps).
+      - name: Scan image with Trivy
+        run: >
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock
+          aquasec/trivy:0.76.0@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222
+          image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 multi-clip:ci
