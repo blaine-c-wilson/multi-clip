@@ -37,7 +37,7 @@ next_id = 1
 @app.get("/health")
 def health() -> dict:
     """Lets monitoring and the deploy pipeline check that the app is running."""
-    return {"status": "okay"}
+    return {"status": "ok"}
 
 
 @app.get("/")
