@@ -23,6 +23,13 @@ def test_home_page_loads():
     response = client.get("/")
     assert response.status_code == 200
     assert "multi-clip" in response.text
+    
+
+def test_favicon_is_served():
+    response = client.get("/static/favicon.ico")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/")
+    assert response.content
 
 
 def test_create_and_list_clips():

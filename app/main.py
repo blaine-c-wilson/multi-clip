@@ -10,10 +10,13 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from fastapi.staticfiles import StaticFiles
 
 STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="multi-clip")
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 class ClipIn(BaseModel):
