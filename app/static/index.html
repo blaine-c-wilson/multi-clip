@@ -7,6 +7,8 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <style>
     body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    /* 1em is the heading's font size, so the logo matches the text height. */
+    h1 img { height: 1em; vertical-align: middle; }
     textarea { width: 100%; min-height: 5rem; box-sizing: border-box; font: inherit; }
     button { font: inherit; cursor: pointer; }
     ul { list-style: none; padding: 0; }
@@ -16,7 +18,8 @@
   </style>
 </head>
 <body>
-  <h1>multi-clip</h1>
+  <!-- alt="" because the logo is decoration; the heading text already says the name. -->
+  <h1>multi-clip <img src="/favicon.svg" alt=""></h1>
 
   <form id="new-clip">
     <textarea id="text" placeholder="Paste or type a clip..." required></textarea>
