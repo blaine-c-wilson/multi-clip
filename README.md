@@ -3,7 +3,7 @@ multi clipboard app
 
 This application is an on-screen hidable multi clipboard that accepts images, text, and video.
 
-The current version is a web app that saves text clips. Clips are kept in memory, so they are lost when the app restarts.
+The current version is a web app that saves text and image clips. On AWS, clips are kept in DynamoDB and images in S3; running locally, text clips are kept in memory and image clips are switched off.
 
 ## Running locally
 
@@ -83,6 +83,17 @@ finds it through its `CLIPS_TABLE` environment variable. Without that variable, 
 running locally, clips are kept in memory instead. The function runs as the IAM role
 `multi-clip-lambda`: `AWSLambdaBasicExecutionRole` for logs, plus the inline policy in
 `aws/lambda-dynamodb-policy.json` for the table only.
+
+Image files are in the S3 bucket `multi-clip-images-433490647961`, under `images/`, found
+through the function's `IMAGES_BUCKET` environment variable. Browsers upload to it directly
+with a signed form (PNG, JPEG, GIF or WebP, up to 5 MB) and view images through short-lived
+signed links, so the bucket stays private (Block Public Access on). Its CORS rules, which let
+the live site's pages talk to it, are in `aws/images-bucket-cors.json`. The app has no login, so
+images don't stay forever: image clips get an `expires_at` time 7 days ahead, which the table's
+time-to-live setting uses to delete them, and a bucket lifecycle rule deletes files under
+`images/` after 8 days. The role's inline policy `multi-clip-images`
+(`aws/lambda-images-policy.json`) allows only that bucket. Without `IMAGES_BUCKET`, as when
+running locally, image clips are switched off.
 
 - CI signs in to AWS as the IAM user `github-actions-multi-clip`. Its permissions are in
   `aws/github-deploy-policy.json`; keep that file in sync with the user's inline policy.

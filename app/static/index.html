@@ -14,6 +14,8 @@
     ul { list-style: none; padding: 0; }
     li { border: 1px solid #ccc; border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem; }
     li pre { white-space: pre-wrap; margin: 0 0 0.5rem; font: inherit; }
+    li img { display: block; max-width: 100%; max-height: 20rem; margin-bottom: 0.5rem; }
+    #new-image { margin: 0.5rem 0 1rem; }
     .meta { color: #666; font-size: 0.85rem; }
   </style>
 </head>
@@ -24,6 +26,12 @@
   <form id="new-clip">
     <textarea id="text" placeholder="Paste or type a clip..." required></textarea>
     <button type="submit">Save clip</button>
+  </form>
+
+  <form id="new-image">
+    <label>Or add an image (PNG, JPEG, GIF or WebP, up to 5 MB; you can also paste one):
+      <input type="file" id="image" accept="image/png,image/jpeg,image/gif,image/webp">
+    </label>
   </form>
 
   <ul id="clips"></ul>
@@ -39,17 +47,26 @@
       for (const clip of clips) {
         const item = document.createElement("li");
 
-        // textContent (not innerHTML) so clip text is never run as HTML.
-        const text = document.createElement("pre");
-        text.textContent = clip.text;
-
         const meta = document.createElement("div");
         meta.className = "meta";
         meta.textContent = new Date(clip.created_at).toLocaleString() + " ";
 
         const copy = document.createElement("button");
         copy.textContent = "Copy";
-        copy.onclick = () => navigator.clipboard.writeText(clip.text);
+
+        let content;
+        if (clip.kind === "image") {
+          content = document.createElement("img");
+          content.src = `/api/clips/${clip.id}/image`;
+          content.alt = "Image clip";
+          copy.onclick = () => copyImage(content.src);
+          meta.textContent += `(deleted ${new Date(clip.expires_at).toLocaleDateString()}) `;
+        } else {
+          // textContent (not innerHTML) so clip text is never run as HTML.
+          content = document.createElement("pre");
+          content.textContent = clip.text;
+          copy.onclick = () => navigator.clipboard.writeText(clip.text);
+        }
 
         const remove = document.createElement("button");
         remove.textContent = "Delete";
@@ -59,7 +76,7 @@
         };
 
         meta.append(copy, " ", remove);
-        item.append(text, meta);
+        item.append(content, meta);
         list.append(item);
       }
     }
@@ -75,6 +92,64 @@
       textBox.value = "";
       loadClips();
     };
+
+    // The clipboard only takes PNG images everywhere, so redraw other
+    // formats as PNG. Safari needs the image handed over as a promise.
+    function copyImage(url) {
+      const png = fetch(url)
+        .then((response) => response.blob())
+        .then(createImageBitmap)
+        .then((bitmap) => {
+          const canvas = document.createElement("canvas");
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          canvas.getContext("2d").drawImage(bitmap, 0, 0);
+          return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        });
+      navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+    }
+
+    // Three steps: ask the app for a signed form, send the image straight to
+    // S3 with it (Lambda can't take big uploads), then tell the app it's there.
+    async function saveImage(file) {
+      if (file.size > 5 * 1024 * 1024) return alert("Images can be up to 5 MB.");
+      let response = await fetch("/api/uploads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content_type: file.type }),
+      });
+      if (!response.ok) return alert((await response.json()).detail);
+      const upload = await response.json();
+
+      const form = new FormData();
+      for (const [name, value] of Object.entries(upload.fields)) form.append(name, value);
+      form.append("file", file); // S3 needs the file after the other fields
+      response = await fetch(upload.url, { method: "POST", body: form });
+      if (!response.ok) return alert("The image upload failed.");
+
+      response = await fetch("/api/image-clips", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: upload.id }),
+      });
+      if (!response.ok) return alert((await response.json()).detail);
+      loadClips();
+    }
+
+    const picker = document.getElementById("image");
+    picker.onchange = async () => {
+      await saveImage(picker.files[0]);
+      picker.value = "";
+    };
+
+    // Pasting an image anywhere on the page (e.g. a screenshot) saves it.
+    document.addEventListener("paste", (event) => {
+      const file = [...event.clipboardData.files].find((f) => f.type.startsWith("image/"));
+      if (file) {
+        event.preventDefault();
+        saveImage(file);
+      }
+    });
 
     loadClips();
   </script>
