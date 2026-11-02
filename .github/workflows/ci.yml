@@ -157,7 +157,16 @@ jobs:
           docker tag multi-clip:ci "$REPOSITORY:$GITHUB_SHA"
           docker push "$REPOSITORY:$GITHUB_SHA"
 
+      # The image that's live now: the one to go back to if this deploy fails.
+      - name: Remember the running image
+        id: previous
+        run: |
+          IMAGE=$(aws lambda get-function --function-name multi-clip --query Code.ImageUri --output text)
+          echo "Currently running: $IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
       - name: Deploy to Lambda
+        id: deploy
         env:
           REPOSITORY: ${{ vars.ECR_REPOSITORY }}
         run: |
@@ -175,4 +184,29 @@ jobs:
             curl -fsS "${URL}health" && exit 0
             sleep 3
           done
+          exit 1
+
+      # Runs only if the deploy or the live check failed. Puts the previous image
+      # back and checks the site again, but leaves the job red: the new code is
+      # still broken and needs a look.
+      - name: Roll back to the previous image
+        if: >-
+          failure() && steps.previous.outputs.image != '' &&
+          (steps.deploy.outcome == 'failure' || steps.check.outcome == 'failure')
+        env:
+          PREVIOUS: ${{ steps.previous.outputs.image }}
+        run: |
+          echo "::error::Deploy failed; rolling back to $PREVIOUS"
+          aws lambda update-function-code --function-name multi-clip \
+            --image-uri "$PREVIOUS" > /dev/null
+          aws lambda wait function-updated --function-name multi-clip
+          URL=$(aws lambda get-function-url-config --function-name multi-clip --query FunctionUrl --output text)
+          for i in $(seq 1 10); do
+            if curl -fsS "${URL}health"; then
+              echo "::warning::Rolled back to $PREVIOUS; the site is healthy again"
+              exit 1
+            fi
+            sleep 3
+          done
+          echo "::error::Rollback finished, but the site is still unhealthy. Check the Lambda logs now."
           exit 1
