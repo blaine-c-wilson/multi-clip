@@ -47,6 +47,24 @@ To check the locked packages for known vulnerabilities (CI also runs this):
 pip-audit --strict --disable-pip -r requirements-dev.txt
 ```
 
+## Lambda adapter mirror
+
+The Dockerfile pulls the AWS Lambda Web Adapter from a public copy at
+`ghcr.io/blaine-c-wilson/aws-lambda-adapter`, because `public.ecr.aws` often rate-limits CI
+(issue #15). Dependabot doesn't watch the copy, so to upgrade the adapter, mirror the new
+version from a Mac with Docker running:
+
+1. Create a classic personal access token with `write:packages` and a short expiry.
+2. Sign in, copy the image, and check that its digest matches the original:
+   ```bash
+   docker login ghcr.io -u blaine-c-wilson
+   docker buildx imagetools create --tag ghcr.io/blaine-c-wilson/aws-lambda-adapter:<version> \
+     public.ecr.aws/awsguru/aws-lambda-adapter:<version>@sha256:<digest>
+   docker buildx imagetools inspect ghcr.io/blaine-c-wilson/aws-lambda-adapter:<version>
+   docker logout ghcr.io
+   ```
+3. Delete the token, then update the `FROM` line in the Dockerfile to the new tag and digest.
+
 ## Deployment
 
 The app runs on AWS Lambda (`us-east-2`) at

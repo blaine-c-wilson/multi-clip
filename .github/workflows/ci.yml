@@ -61,9 +61,8 @@ jobs:
         with:
           persist-credentials: false
 
-      # public.ecr.aws sometimes rate-limits the Lambda adapter download (HTTP 429).
-      # Retry only that failure, waiting longer each time; any other build error
-      # fails straight away.
+      # Registries sometimes rate-limit image downloads (HTTP 429). Retry only that
+      # failure, waiting longer each time; any other build error fails straight away.
       - name: Build image
         run: |
           set -o pipefail

@@ -3,7 +3,10 @@
 # Dependabot opens PRs when newer images are published.
 
 # AWS Lambda Web Adapter: lets this ordinary web server run on AWS Lambda.
-FROM public.ecr.aws/awsguru/aws-lambda-adapter:1.1.0@sha256:17cfd08eff1dfea3f6a9a1e9c65fdac80aa4919b6085e746615530f43f57d2f1 AS lambda-adapter
+# Pulled from an exact copy in our own GHCR, because public.ecr.aws often
+# rate-limits CI (issue #15). Dependabot can't see new versions of the copy;
+# to upgrade, mirror the new version by hand (see README) and update the digest.
+FROM ghcr.io/blaine-c-wilson/aws-lambda-adapter:1.1.0@sha256:17cfd08eff1dfea3f6a9a1e9c65fdac80aa4919b6085e746615530f43f57d2f1 AS lambda-adapter
 
 FROM python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8
 
