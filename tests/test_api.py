@@ -58,6 +58,11 @@ def test_favicon_is_linked_and_served():
     response = client.get("/favicon.svg")
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/svg+xml"
+    assert "paperclip" in response.text
+
+
+def test_logo_follows_title():
+    assert '<h1>multi-clip <img src="/favicon.svg"' in client.get("/").text
 
 
 def test_create_and_list_clips():

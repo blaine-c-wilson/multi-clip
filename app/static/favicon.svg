@@ -1,7 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- A clipboard: the board, its clip, and two lines of text. -->
-  <rect x="5" y="4" width="22" height="26" rx="3" fill="#2f6fdf"/>
-  <rect x="11" y="1" width="10" height="6" rx="2" fill="#1d4596"/>
-  <rect x="9" y="12" width="14" height="3" rx="1" fill="#fff"/>
-  <rect x="9" y="19" width="10" height="3" rx="1" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Colorful paperclip logo</title>
+  <desc id="desc">Seven interlocking paper clips arranged radially in red, orange, yellow, green, cyan, blue, and purple.</desc>
+  <g stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#DC2626" transform="translate(128 128) rotate(18)" d="M -7 8 V -66 C -7 -80 11 -80 11 -66 V -8 C 11 11 -17 11 -17 -8 V -91 C -17 -114 17 -114 17 -91 V -5 C 17 13 5 20 -7 16"/>
+    <path stroke="#D97706" transform="translate(128 128) rotate(69)" d="M -7 8 V -66 C -7 -80 11 -80 11 -66 V -8 C 11 11 -17 11 -17 -8 V -91 C -17 -114 17 -114 17 -91 V -5 C 17 13 5 20 -7 16"/>
+    <path stroke="#C4B51A" transform="translate(128 128) rotate(121)" d="M -7 8 V -66 C -7 -80 11 -80 11 -66 V -8 C 11 11 -17 11 -17 -8 V -91 C -17 -114 17 -114 17 -91 V -5 C 17 13 5 20 -7 16"/>
+    <path stroke="#4D9E28" transform="translate(128 128) rotate(172)" d="M -7 8 V -66 C -7 -80 11 -80 11 -66 V -8 C 11 11 -17 11 -17 -8 V -91 C -17 -114 17 -114 17 -91 V -5 C 17 13 5 20 -7 16"/>
+    <path stroke="#089AC1" transform="translate(128 128) rotate(224)" d="M -7 8 V -66 C -7 -80 11 -80 11 -66 V -8 C 11 11 -17 11 -17 -8 V -91 C -17 -114 17 -114 17 -91 V -5 C 17 13 5 20 -7 16"/>
+    <path stroke="#4338CA" transform="translate(128 128) rotate(275)" d="M -7 8 V -66 C -7 -80 11 -80 11 -66 V -8 C 11 11 -17 11 -17 -8 V -91 C -17 -114 17 -114 17 -91 V -5 C 17 13 5 20 -7 16"/>
+    <path stroke="#BD55B0" transform="translate(128 128) rotate(327)" d="M -7 8 V -66 C -7 -80 11 -80 11 -66 V -8 C 11 11 -17 11 -17 -8 V -91 C -17 -114 17 -114 17 -91 V -5 C 17 13 5 20 -7 16"/>
+  </g>
 </svg>
