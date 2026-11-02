@@ -45,6 +45,12 @@ def index() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/favicon.svg")
+def favicon() -> FileResponse:
+    """The icon in the browser tab (linked from index.html)."""
+    return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
+
+
 @app.get("/api/clips")
 def list_clips() -> list[Clip]:
     """Return all clips, newest first."""

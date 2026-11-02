@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- A clipboard: the board, its clip, and two lines of text. -->
+  <rect x="5" y="4" width="22" height="26" rx="3" fill="#2f6fdf"/>
+  <rect x="11" y="1" width="10" height="6" rx="2" fill="#1d4596"/>
+  <rect x="9" y="12" width="14" height="3" rx="1" fill="#fff"/>
+  <rect x="9" y="19" width="10" height="3" rx="1" fill="#fff"/>
+</svg>

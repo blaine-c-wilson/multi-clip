@@ -25,6 +25,14 @@ def test_home_page_loads():
     assert "multi-clip" in response.text
 
 
+def test_favicon_is_linked_and_served():
+    # Browsers ask for /favicon.ico unless the page links an icon, so check both halves.
+    assert '<link rel="icon" href="/favicon.svg"' in client.get("/").text
+    response = client.get("/favicon.svg")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/svg+xml"
+
+
 def test_create_and_list_clips():
     client.post("/api/clips", json={"text": "first"})
     client.post("/api/clips", json={"text": "second"})
