@@ -77,6 +77,13 @@ image, and checks that `/health` answers on the live site.
 To roll back, choose **Deploy new image** on the function's page in the Lambda console and
 pick the previous image tag, or revert the commit on `main` so the pipeline redeploys it.
 
+Clips are stored in the DynamoDB table `multi-clip-clips` (partition key `owner`, sort key
+`id`, both strings; provisioned 5/5 capacity; deletion protection on). The Lambda function
+finds it through its `CLIPS_TABLE` environment variable. Without that variable, as when
+running locally, clips are kept in memory instead. The function runs as the IAM role
+`multi-clip-lambda`: `AWSLambdaBasicExecutionRole` for logs, plus the inline policy in
+`aws/lambda-dynamodb-policy.json` for the table only.
+
 - CI signs in to AWS as the IAM user `github-actions-multi-clip`. Its permissions are in
   `aws/github-deploy-policy.json`; keep that file in sync with the user's inline policy.
 - The user's access key is stored only as secrets in the GitHub environment `production`,
