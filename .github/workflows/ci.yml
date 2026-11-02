@@ -203,6 +203,9 @@ jobs:
           URL=$(aws lambda get-function-url-config --function-name multi-clip --query FunctionUrl --output text)
           for i in $(seq 1 10); do
             if curl -fsS "${URL}health"; then
+              # curl's output has no trailing newline, and GitHub only reads
+              # ::warning:: at the start of a line.
+              echo
               echo "::warning::Rolled back to $PREVIOUS; the site is healthy again"
               exit 1
             fi
