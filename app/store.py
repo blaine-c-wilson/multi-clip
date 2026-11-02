@@ -4,19 +4,25 @@ On AWS, clips live in a DynamoDB table named by the CLIPS_TABLE environment
 variable. Without it (running locally, or in CI's smoke test) they're kept in
 memory and disappear when the app restarts.
 
-Each clip is a dict with "id", "kind", "text" and "created_at". "kind" is
-"text" for now; image clips will add "image" with the image itself in S3.
+Each clip is a dict with "id", "kind" and "created_at". A "text" clip has
+"text"; an "image" clip has "image_key" and "content_type" (the image itself
+is in S3, see images.py) and "expires_at", when DynamoDB's time-to-live
+deletes it, in seconds since 1970.
 """
 
 import os
 import secrets
 import time
+from decimal import Decimal
 
 import boto3
 from boto3.dynamodb.conditions import Key
 
 # Every clip belongs to "public" until users can log in (issue #10).
 OWNER = "public"
+
+# What new_id() makes. Checked before an ID from a browser goes into an S3 key.
+ID_PATTERN = r"^\d{20}-[0-9a-f]{8}$"
 
 _last_ns = 0
 
@@ -44,9 +50,9 @@ class MemoryStore:
         """All clips, newest first."""
         return sorted(self.clips.values(), key=lambda c: c["id"], reverse=True)
 
-    def delete(self, clip_id: str) -> bool:
-        """Delete a clip; False if it didn't exist."""
-        return self.clips.pop(clip_id, None) is not None
+    def delete(self, clip_id: str) -> dict | None:
+        """Delete a clip and return it; None if it didn't exist."""
+        return self.clips.pop(clip_id, None)
 
 
 class DynamoStore:
@@ -69,18 +75,27 @@ class DynamoStore:
             if "LastEvaluatedKey" not in page:
                 break
             query["ExclusiveStartKey"] = page["LastEvaluatedKey"]
-        return [{k: v for k, v in item.items() if k != "owner"} for item in items]
+        return [_from_item(item) for item in items]
 
-    def delete(self, clip_id: str) -> bool:
-        """Delete a clip; False if it didn't exist."""
+    def delete(self, clip_id: str) -> dict | None:
+        """Delete a clip and return it; None if it didn't exist."""
         try:
-            self.table.delete_item(
+            response = self.table.delete_item(
                 Key={"owner": OWNER, "id": clip_id},
                 ConditionExpression="attribute_exists(id)",
+                ReturnValues="ALL_OLD",
             )
         except self.table.meta.client.exceptions.ConditionalCheckFailedException:
-            return False
-        return True
+            return None
+        return _from_item(response["Attributes"])
+
+
+def _from_item(item: dict) -> dict:
+    """A table item as a clip: without "owner", and with DynamoDB's numbers
+    (which boto3 reads as Decimal) as plain ints."""
+    return {
+        k: int(v) if isinstance(v, Decimal) else v for k, v in item.items() if k != "owner"
+    }
 
 
 def make_store() -> MemoryStore | DynamoStore:
