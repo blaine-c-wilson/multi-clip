@@ -16,6 +16,8 @@
     li pre { white-space: pre-wrap; margin: 0 0 0.5rem; font: inherit; }
     li img { display: block; max-width: 100%; max-height: 20rem; margin-bottom: 0.5rem; }
     #new-image { margin: 0.5rem 0 1rem; }
+    /* Shown while an image is dragged over the text box. */
+    textarea.dropping { outline: 3px dashed #2f6fdf; background: #eef3fd; }
     .meta { color: #666; font-size: 0.85rem; }
   </style>
 </head>
@@ -24,12 +26,12 @@
   <h1>multi-clip <img src="/favicon.svg" alt=""></h1>
 
   <form id="new-clip">
-    <textarea id="text" placeholder="Paste or type a clip..." required></textarea>
+    <textarea id="text" placeholder="Paste or type a clip, or drop an image here..." required></textarea>
     <button type="submit">Save clip</button>
   </form>
 
   <form id="new-image">
-    <label>Or add an image (PNG, JPEG, GIF or WebP, up to 5 MB; you can also paste one):
+    <label>Or add an image (PNG, JPEG, GIF or WebP, up to 5 MB; you can also paste or drop one):
       <input type="file" id="image" accept="image/png,image/jpeg,image/gif,image/webp">
     </label>
   </form>
@@ -141,6 +143,26 @@
       await saveImage(picker.files[0]);
       picker.value = "";
     };
+
+    // Dropping images on the text box saves them, like pasting.
+    const dropZone = document.getElementById("text");
+    dropZone.addEventListener("dragover", (event) => {
+      if (event.dataTransfer.types.includes("Files")) {
+        event.preventDefault(); // without this the browser won't allow a drop
+        dropZone.classList.add("dropping");
+      }
+    });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dropping"));
+    dropZone.addEventListener("drop", async (event) => {
+      dropZone.classList.remove("dropping");
+      if (!event.dataTransfer.types.includes("Files")) return; // dropped text goes in the box
+      // Otherwise the browser would leave the page to open the file.
+      event.preventDefault();
+      const files = [...event.dataTransfer.files];
+      const images = files.filter((f) => f.type.startsWith("image/"));
+      if (images.length < files.length) alert("Only images can be dropped here.");
+      for (const file of images) await saveImage(file);
+    });
 
     // Pasting an image anywhere on the page (e.g. a screenshot) saves it.
     document.addEventListener("paste", (event) => {
