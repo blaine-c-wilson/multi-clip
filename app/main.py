@@ -4,6 +4,7 @@ A small API for saving and listing text clips, plus a web page that uses it.
 Clips are stored in memory for now, so they disappear when the app restarts.
 """
 
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -37,6 +38,10 @@ next_id = 1
 @app.get("/health")
 def health() -> dict:
     """Lets monitoring and the deploy pipeline check that the app is running."""
+    # ROLLBACK DRILL: deliberately unhealthy on Lambda only (Lambda sets this
+    # variable; CI doesn't). Revert this commit after the drill.
+    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        raise HTTPException(status_code=503, detail="Rollback drill")
     return {"status": "ok"}
 
 
