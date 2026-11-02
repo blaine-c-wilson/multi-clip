@@ -1,16 +1,43 @@
+import boto3
 import pytest
 from fastapi.testclient import TestClient
+from moto import mock_aws
 
-from app import main
+from app import main, store
 
 client = TestClient(main.app)
 
 
-@pytest.fixture(autouse=True)
-def empty_store():
-    """Start every test with no clips, so tests don't affect each other."""
-    main.clips.clear()
-    main.next_id = 1
+@pytest.fixture(autouse=True, params=["memory", "dynamodb"])
+def empty_store(request, monkeypatch):
+    """Run every test against both stores, starting with no clips.
+
+    The DynamoDB store talks to moto, a fake AWS inside the test process, so no
+    real AWS account or network is needed.
+    """
+    if request.param == "memory":
+        monkeypatch.setattr(main, "store", store.MemoryStore())
+        yield
+        return
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-2")
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    with mock_aws():
+        # Same keys as the real table (see README).
+        boto3.client("dynamodb").create_table(
+            TableName="clips",
+            KeySchema=[
+                {"AttributeName": "owner", "KeyType": "HASH"},
+                {"AttributeName": "id", "KeyType": "RANGE"},
+            ],
+            AttributeDefinitions=[
+                {"AttributeName": "owner", "AttributeType": "S"},
+                {"AttributeName": "id", "AttributeType": "S"},
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+        monkeypatch.setattr(main, "store", store.DynamoStore("clips"))
+        yield
 
 
 def test_health():
@@ -46,9 +73,11 @@ def test_create_returns_new_clip():
     response = client.post("/api/clips", json={"text": "hello"})
     assert response.status_code == 201
     body = response.json()
-    assert body["id"] == 1
     assert body["text"] == "hello"
+    assert body["kind"] == "text"
+    assert body["id"]
     assert "created_at" in body
+    assert client.get("/api/clips").json() == [body]
 
 
 def test_empty_clip_is_rejected():
@@ -68,3 +97,17 @@ def test_delete_clip():
 def test_delete_missing_clip_returns_404():
     response = client.delete("/api/clips/999")
     assert response.status_code == 404
+
+
+def test_ids_sort_in_creation_order():
+    ids = [store.new_id() for _ in range(1000)]
+    assert ids == sorted(ids)
+    assert len(set(ids)) == len(ids)
+
+
+def test_store_is_chosen_by_environment(monkeypatch):
+    monkeypatch.delenv("CLIPS_TABLE", raising=False)
+    assert isinstance(store.make_store(), store.MemoryStore)
+    monkeypatch.setenv("CLIPS_TABLE", "clips")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-2")  # Lambda sets this itself
+    assert isinstance(store.make_store(), store.DynamoStore)

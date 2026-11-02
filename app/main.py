@@ -1,7 +1,8 @@
 """multi-clip web app.
 
 A small API for saving and listing text clips, plus a web page that uses it.
-Clips are stored in memory for now, so they disappear when the app restarts.
+Clips are stored in DynamoDB on AWS, or in memory when running locally
+(see store.py).
 """
 
 from datetime import datetime, timezone
@@ -10,6 +11,8 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+
+from app.store import make_store, new_id
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -25,13 +28,12 @@ class ClipIn(BaseModel):
 class Clip(ClipIn):
     """A saved clip, as the API returns it."""
 
-    id: int
+    id: str
+    kind: str
     created_at: datetime
 
 
-# In-memory storage. Replaced by a real database in a later phase.
-clips: list[Clip] = []
-next_id = 1
+store = make_store()
 
 
 @app.get("/health")
@@ -54,22 +56,22 @@ def favicon() -> FileResponse:
 @app.get("/api/clips")
 def list_clips() -> list[Clip]:
     """Return all clips, newest first."""
-    return list(reversed(clips))
+    return store.list()
 
 
 @app.post("/api/clips", status_code=201)
 def create_clip(clip_in: ClipIn) -> Clip:
-    global next_id
-    clip = Clip(id=next_id, text=clip_in.text, created_at=datetime.now(timezone.utc))
-    clips.append(clip)
-    next_id += 1
+    clip = {
+        "id": new_id(),
+        "kind": "text",
+        "text": clip_in.text,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    store.add(clip)
     return clip
 
 
 @app.delete("/api/clips/{clip_id}", status_code=204)
-def delete_clip(clip_id: int) -> None:
-    for i, clip in enumerate(clips):
-        if clip.id == clip_id:
-            del clips[i]
-            return
-    raise HTTPException(status_code=404, detail="Clip not found")
+def delete_clip(clip_id: str) -> None:
+    if not store.delete(clip_id):
+        raise HTTPException(status_code=404, detail="Clip not found")
