@@ -19,6 +19,7 @@
     /* Shown while an image is dragged over the text box. */
     textarea.dropping { outline: 3px dashed #2f6fdf; background: #eef3fd; }
     .meta { color: #666; font-size: 0.85rem; }
+    kbd { font: inherit; border: 1px solid #ccc; border-radius: 4px; padding: 0 0.3em; }
   </style>
 </head>
 <body>
@@ -40,12 +41,15 @@
 
   <script>
     const list = document.getElementById("clips");
+    // Copy buttons of the clips on screen, top first, for the keyboard shortcuts.
+    let copyButtons = [];
 
     // Fetch all clips from the API and redraw the list.
     async function loadClips() {
       const response = await fetch("/api/clips");
       const clips = await response.json();
       list.innerHTML = "";
+      copyButtons = [];
       for (const clip of clips) {
         const item = document.createElement("li");
 
@@ -61,13 +65,13 @@
           content = document.createElement("img");
           content.src = `/api/clips/${clip.id}/image`;
           content.alt = "Image clip";
-          copy.onclick = () => copyImage(content.src);
+          copy.onclick = () => { copyImage(content.src); copied(copy); };
           meta.textContent += `(deleted ${new Date(clip.expires_at).toLocaleDateString()}) `;
         } else {
           // textContent (not innerHTML) so clip text is never run as HTML.
           content = document.createElement("pre");
           content.textContent = clip.text;
-          copy.onclick = () => navigator.clipboard.writeText(clip.text);
+          copy.onclick = () => { navigator.clipboard.writeText(clip.text); copied(copy); };
         }
 
         const remove = document.createElement("button");
@@ -78,6 +82,13 @@
         };
 
         meta.append(copy, " ", remove);
+        copyButtons.push(copy);
+        if (copyButtons.length <= 5) {
+          const shortcut = document.createElement("kbd");
+          shortcut.textContent = `⌘⌥${copyButtons.length}`;
+          shortcut.title = `Press Cmd+Option+${copyButtons.length} to copy this clip`;
+          meta.append(" ", shortcut);
+        }
         item.append(content, meta);
         list.append(item);
       }
@@ -94,6 +105,22 @@
       textBox.value = "";
       loadClips();
     };
+
+    // Show that a copy happened, which matters when it came from the keyboard.
+    function copied(button) {
+      button.textContent = "Copied!";
+      setTimeout(() => (button.textContent = "Copy"), 1000);
+    }
+
+    // Cmd+Option+1 to 5 copy the top five clips. event.code names the key
+    // itself ("Digit1"), because with Option held event.key is a symbol like "¡".
+    document.addEventListener("keydown", (event) => {
+      const digit = event.code.match(/^Digit([1-5])$/);
+      if (digit && event.metaKey && event.altKey && !event.shiftKey && !event.ctrlKey) {
+        event.preventDefault();
+        copyButtons[digit[1] - 1]?.click();
+      }
+    });
 
     // The clipboard only takes PNG images everywhere, so redraw other
     // formats as PNG. Safari needs the image handed over as a promise.
