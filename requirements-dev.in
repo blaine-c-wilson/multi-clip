@@ -4,5 +4,5 @@ httpx2
 pip-audit
 moto
 # Minimum versions that fix known vulnerabilities (see scripts/lock.sh)
-filelock>=4.2.1
+filelock>=4.2.4
 certifi>=2026.10.18
